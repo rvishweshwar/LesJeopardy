@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday Leslie! Jeopardy Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the board */
+        .jeopardy-board {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: repeat(4, 1fr); /* 4 columns for 4 categories */
+        }
+        .category-header {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 700; /* font-bold */
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0.75rem;
+            min-height: 80px;
+        }
+        .clue-box {
+            height: 100px;
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 800; /* font-extrabold */
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+        }
+        .clue-box:not(.used):hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.4);
+        }
+        .used {
+            opacity: 0.2;
+            cursor: default;
+            pointer-events: none;
+            text-decoration: line-through;
+        }
+
+        /* Modal specific styling */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .modal-content {
+            width: 90%;
+            max-width: 800px;
+        }
+
+        @media (max-width: 640px) {
+            .jeopardy-board {
+                gap: 0.25rem;
+            }
+            .category-header {
+                font-size: 1rem;
+                padding: 0.5rem;
+                min-height: 60px;
+            }
+            .clue-box {
+                height: 70px;
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+    <script>
+        // --- GAME DATA ---
+        // You can easily replace or expand this data structure for your game!
+        const gameData = [
+            {
+                category: "It's My Bday",
+                clues: [
+                    { points: 100, answer: "This is worn by me during work hours only", question: "What are glasses/spectacles?", used: false, id: "c0-r0" },
+                    { points: 200, answer: "This is my tattoo..bonus points for why I have it", question: "What is a calalily? (Bonus: For my mom)", used: false, id: "c0-r1" },
+                    { points: 300, answer: "These are my top 3 genres of books I like what are they", question: "What is historical fiction, romantic fiction and thrillers? (bonus : cook book)", used: false, id: "c0-r2" },
+                    { points: 400, answer: "A lot of people love these foods.. but I DONT name 3" , question: "What is Seeweed(Sushi), Eggs, Smooth Soup, Olives and Banana flavored items?", used: false, id: "c0-r3" },
+                ]
+            },
+            {
+                category: "Wicked",
+                clues: [
+                    { points: 100, answer: "This is Elphaba's nickname that glinda affectionately calls her", question: "What is Elphie?", used: false, id: "c1-r0" },
+                    { points: 200, answer: "This prince becoes romanticallyinvolved with both elphaba and glinda.", question: "Who is Fiyero?", used: false, id: "c1-r1" },
+                    { points: 300, answer: "The wizard gives elphaba this ancient book to give the monkeys wings", question: "What is the Grimmerie?", used: false, id: "c1-r2" },
+                    { points: 400, answer: "This stephen schwartz song was cut from original broadway production but is sometimes included in productions and discusses Elphaba's childhood isolation", question: "What is I'm not that girl (reprise)? or what is the wicked witch of the east?  ", used: false, id: "c1-r3" },
+                ]
+            },
+            {
+                category: "Our Buddies",
+                clues: [
+                    { points: 100, answer: "These 2 groups are pretty exclusive and weirdly food/drink related. This is what they call themselves", question: "Who are the fanta boys, burger babes , veggie club?", used: false, id: "c2-r0" },
+                    { points: 200, answer: "These are sports/activities buddies in chicago have done or are doing together", question: "What is football (Soccer), pickleball, knitting, euchre, volleyball, movies?", used: false, id: "c2-r1" },
+                    { points: 300, answer: "This buddy roasts dates on social and this is my secret handle.", question: "Who is Elizabeth Claire O'Keeffe and what is frys_over_guys?", used: false, id: "c2-r2" },
+                    { points: 400, answer: "These are forbidden foods for some in our group,(Name 4 and the person )", question: "What is avacado(matt meff), nuts(matt morgan), pistachios(Claire), rasberrys (Mac) , Shellfish (Leslie) ,?", used: false, id: "c2-r3" },
+                ]
+            },
+            {
+                category: "Milestones",
+                clues: [
+                    { points: 100, answer: "These were some of our romantic milstones for our friends in 2025 (name 3)", question: "What is matt and emma wedding?What is Joc and Ben wedding? What is JJ and Lindsay engagement? What is Claire having a boyfriend? What is Kristen and Patrick moving in together?", used: false, id: "c3-r0" },
+                    { points: 200, answer: "These friends are adorning their titles as aunties proudly (Name 3)", question: "Who is Sarah, Mac, Julia and Lindsay?", used: false, id: "c3-r1" },
+                    { points: 300, answer: "These career/professional pivots, changes and milestones occured in 2025 (Name 3)", question: "What is Rudra getting fired , JJ begal new role, Saige is a french waitress, Matt meff got a big boy job, Claire started new school, Lily started residency? ", used: false, id: "c3-r2" },
+                    { points: 400, answer: "We workout, these athletic endevours were achieved this year (Name 3)", question: "What is buddies did shamrock shuffle, chicago marathon, Ingrid's hancock stairs, Walking a half marathon, marty's freaks winning their first title and Sarah horse back riding?", used: false, id: "c3-r3" },
+                ]
+            },
+        ];
+
+        // --- GAME STATE & CONSTANTS (DECLARED) ---
+        let score = 0;
+        let boardElement, scoreElement, modalElement, modalAnswerElement, modalQuestionContainer, modalQuestionText, revealButton, closeButton;
+
+        let currentClue = null;
+
+        // --- CORE GAME FUNCTIONS ---
+
+        // Initializes the game board structure based on gameData
+        function renderBoard() {
+            // Check if boardElement is initialized before using it
+            if (!boardElement) return;
+
+            boardElement.innerHTML = ''; // Clear existing board
+            
+            // 1. Create Headers
+            gameData.forEach(category => {
+                const header = document.createElement('div');
+                header.className = 'category-header bg-indigo-700 text-white rounded-t-lg shadow-lg';
+                header.textContent = category.category.toUpperCase();
+                boardElement.appendChild(header);
+            });
+
+            // 2. Create Clue Boxes (Row by Row)
+            // Assumes all categories have the same number of clues (rows)
+            const numRows = gameData[0].clues.length;
+            
+            for (let r = 0; r < numRows; r++) {
+                for (let c = 0; c < gameData.length; c++) {
+                    const clue = gameData[c].clues[r];
+                    const clueBox = document.createElement('div');
+                    
+                    clueBox.className = `clue-box bg-blue-900 text-yellow-300 font-inter rounded-md shadow-xl border-b-4 border-blue-950`;
+                    clueBox.textContent = `$${clue.points}`;
+                    clueBox.dataset.categoryIndex = c;
+                    clueBox.dataset.clueIndex = r;
+                    
+                    if (clue.used) {
+                        clueBox.classList.add('used');
+                        clueBox.textContent = ''; // Clear point value when used
+                    } else {
+                        // Attach click handler only for unused clues
+                        clueBox.addEventListener('click', () => showClue(c, r));
+                    }
+                    
+                    boardElement.appendChild(clueBox);
+                }
+            }
+            updateScoreDisplay();
+        }
+
+        // Updates the score display on the top bar
+        function updateScoreDisplay() {
+            // Check if scoreElement is initialized before using it
+            if (scoreElement) {
+                scoreElement.textContent = `Score: $${score}`;
+            }
+        }
+
+        // Shows the clue in a modal when a box is clicked
+        function showClue(categoryIndex, clueIndex) {
+            currentClue = gameData[categoryIndex].clues[clueIndex];
+
+            // 1. Set modal content
+            modalAnswerElement.textContent = currentClue.answer;
+            modalQuestionText.textContent = currentClue.question; // Use the text element
+            
+            // 2. Reset modal state (show answer, hide question container, show reveal button)
+            modalQuestionContainer.classList.add('hidden'); // Use the container element
+            revealButton.classList.remove('hidden');
+            revealButton.textContent = "Reveal Correct Response (Question)";
+            closeButton.textContent = "Acknowledge & Close";
+            closeButton.disabled = true; // Disable closing before revealing
+
+            // 3. Show the modal
+            modalElement.classList.remove('hidden');
+        }
+
+        // Reveals the correct response
+        function revealQuestion() {
+            modalQuestionContainer.classList.remove('hidden'); // Use the container element
+            revealButton.classList.add('hidden');
+            closeButton.disabled = false;
+        }
+
+        // Closes the modal and marks the clue as used
+        function closeModal() {
+            if (!currentClue || !boardElement) return; // Should not happen
+
+            // Mark the clue as used in the data structure
+            currentClue.used = true;
+            
+            // Add points 
+            score += currentClue.points;
+
+            // Find the board element and update its state
+            const box = boardElement.querySelector(`[data-id="${currentClue.id}"]`);
+            if (box) {
+                box.classList.add('used');
+                box.textContent = ''; // Remove points display
+                // Note: The click listener is handled by the re-render in renderBoard
+            }
+
+            modalElement.classList.add('hidden');
+            currentClue = null;
+            renderBoard(); // Re-render the board to update used state
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Assign elements safely inside DOMContentLoaded when they are guaranteed to exist
+            boardElement = document.getElementById('jeopardy-board');
+            scoreElement = document.getElementById('score');
+            modalElement = document.getElementById('clue-modal');
+            modalAnswerElement = document.getElementById('modal-answer');
+            modalQuestionContainer = document.getElementById('modal-question-container'); // Corrected ID usage
+            modalQuestionText = document.getElementById('modal-question-text');         // Corrected ID usage
+            revealButton = document.getElementById('reveal-button');
+            closeButton = document.getElementById('close-button');
+
+
+            // Add data-id to all clues for easier DOM manipulation
+            gameData.forEach((category, c) => {
+                category.clues.forEach((clue, r) => {
+                    clue.id = `c${c}-r${r}`;
+                });
+            });
+
+            // Set up button handlers
+            // These calls are now safe because the element variables are assigned above.
+            revealButton.addEventListener('click', revealQuestion);
+            closeButton.addEventListener('click', closeModal);
+
+            // Initial render
+            renderBoard();
+        });
+    </script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-4 md:p-8 font-sans">
+
+    <!-- Header and Score -->
+    <header class="text-center mb-6">
+        <h1 class="text-4xl md:text-5xl font-extrabold text-yellow-400 mb-2 tracking-wider">
+            HAPPY BIRTHDAY, LESLIE!
+        </h1>
+        <h2 class="text-2xl font-semibold text-gray-300 mb-4">
+            Custom Jeopardy Game
+        </h2>
+        <div id="score" class="text-3xl font-bold bg-gray-800 inline-block p-3 rounded-xl shadow-inner text-green-400">
+            Score: $0
+        </div>
+    </header>
+
+    <!-- Jeopardy Board Container -->
+    <main class="max-w-4xl mx-auto bg-blue-800 p-3 md:p-6 rounded-3xl shadow-2xl border-4 border-yellow-500">
+        <div id="jeopardy-board" class="jeopardy-board">
+            <!-- Board content generated by JavaScript -->
+        </div>
+    </main>
+
+    <!-- Clue Modal -->
+    <div id="clue-modal" class="modal hidden">
+        <div class="modal-content bg-blue-900 p-8 rounded-xl shadow-2xl border-4 border-yellow-400 text-center">
+            
+            <!-- The Clue (Answer) -->
+            <h3 class="text-2xl md:text-3xl font-bold text-yellow-300 mb-6">
+                The Answer Is:
+            </h3>
+            <p id="modal-answer" class="text-3xl md:text-4xl text-white italic mb-10 p-4 bg-blue-950 rounded-lg shadow-inner">
+                <!-- Clue text goes here -->
+            </p>
+
+            <!-- The Question (Correct Response) Container -->
+            <!-- Renamed ID to avoid conflict and reference the container for hiding/showing -->
+            <div id="modal-question-container" class="hidden">
+                <h3 class="text-2xl md:text-3xl font-bold text-green-400 mb-4">
+                    The Correct Response (Question) Is:
+                </h3>
+                <p class="text-3xl md:text-4xl text-white font-extrabold p-4 rounded-lg bg-green-900/50">
+                    <!-- Renamed ID to hold the actual text -->
+                    <span id="modal-question-text"></span> 
+                </p>
+                <div class="h-8"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mt-6">
+                <button id="reveal-button"
+                    class="px-6 py-3 text-xl font-bold text-blue-900 bg-yellow-400 rounded-lg transition duration-200 hover:bg-yellow-300 shadow-md">
+                    Reveal Correct Response (Question)
+                </button>
+                <button id="close-button" disabled
+                    class="px-6 py-3 text-xl font-bold text-white bg-green-600 rounded-lg transition duration-200 disabled:opacity-50 hover:bg-green-700 shadow-md">
+                    Acknowledge & Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
